@@ -1,0 +1,36 @@
+Go
+(Otra) Introducción
+29 Sep 2016
+
+Carles Aragón
+Oriol Flors
+
+* Qué es Nexus?
+
+Nexus es un sistema distribuido de RPC, "Remote Procedure Calls", que puede por tanto usarse para llamar a métodos implementados por servicios que no están en local.
+
+Se basa en el protocolo JSONRPC, que define un formato de llamada de métodos en JSON, simple y ligero. 
+
+.code {"jsonrpc":"2.0","id":1,"method":"nombre.metodo","params":"parametros"}
+
+* Estructura de servicios de Nexus
+
+La estructura de llamadas de Nexus se basa en tareas, de las cuales se puede hacer _push_ y _pull_:
+
+- Un servicio hace _pull_ en un _path_ cuando es capaz de resolver tareas asignadas a ese _path_.
+- Un cliente hace _push_ en un _path_ cuando quiere que se le resuelva la tarea correspondiente a ese _path_.
+
+: Nexus bàsic: és només JSONRPC
+: nc localhost 1717
+: {"jsonrpc":"2.0","id":1,"method":"sys.login","params":{"user":"root","pass":"root"}}
+: {"jsonrpc":"2.0","id":1,"method":"user.list","params":{}}
+
+: Servei basic en service
+: go run main.go        // desde dos terminals diferents
+: nxctl push demo.hello // i vore com s'executa en dos llocs diferents
+: nxctl push demo.int   // i vore com ix method not found
+
+: Sala de xat to cutre
+: nxctl pipe read                      // desde dos llocs diferents
+: nxctl topic sub {pipe_id} demo.chat  // desde dos llocs diferents
+: nxctl topic pub demo.chat {missatge} // desde dos llocs diferents
