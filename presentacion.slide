@@ -1,36 +1,156 @@
-Go
-(Otra) Introducción
-29 Sep 2016
+Nexus
+Introducción
+11 Nov 2016
 
-Carles Aragón
 Oriol Flors
 
 * Qué es Nexus?
 
-Nexus es un sistema distribuido de RPC, "Remote Procedure Calls", que puede por tanto usarse para llamar a métodos implementados por servicios que no están en local.
+Nexus es un agente de mensajería ligero y asíncrono. Permite que dos o más componentes separados entre si se intercambien mensajes. 
 
-Se basa en el protocolo JSONRPC, que define un formato de llamada de métodos en JSON, simple y ligero. 
+Soporta dos paradigmas de comunicación básicos:
 
-.code {"jsonrpc":"2.0","id":1,"method":"nombre.metodo","params":"parametros"}
+- RPC: un agente está a la escucha de peticiones, y otro envía peticiones y espera la respuesta.
+- Pub/Sub: dónde un agente publica mensajes sin esperar respuesta y otro (o varios) se suscriben a los mensajes que les interesan.
 
-* Estructura de servicios de Nexus
 
-La estructura de llamadas de Nexus se basa en tareas, de las cuales se puede hacer _push_ y _pull_:
 
-- Un servicio hace _pull_ en un _path_ cuando es capaz de resolver tareas asignadas a ese _path_.
-- Un cliente hace _push_ en un _path_ cuando quiere que se le resuelva la tarea correspondiente a ese _path_.
+* Porqué Nexus?
 
-: Nexus bàsic: és només JSONRPC
-: nc localhost 1717
-: {"jsonrpc":"2.0","id":1,"method":"sys.login","params":{"user":"root","pass":"root"}}
-: {"jsonrpc":"2.0","id":1,"method":"user.list","params":{}}
+Hay principalmente dos razones:
+
+- Se basa en el protocolo JSONRPC, que define un formato de llamada de métodos en JSON, simple y ligero.
+- Permite usar varios canales para conectarse a él (Websocket, TCP, HTTP).
+
+Estas dos características lo hacen agnóstico a la plataforma desde la que se use, ya que cualquier lenguaje puede codificar JSON, y usar alguno de los canales disponibles. Por ejemplo:
+
+- Websocket con JavaScript desde el navegador.
+- Conexión TCP con Go desde un servidor.
+- Peticiones HTTP con python desde un servidor.
+
+Actualmente hay implementaciones que permiten comunicarse con Nexus en Go, Python, Javascript y Java.
+
+
+
+* Porqué RPC y Pub/Sub?
+
+Estos dos paradigmas de comunicación se pueden usar para implementar sistemas basados en microservicios. Por ejemplo:
+
+- Una empresa puede tener varias secciones, desde las cuales se puede querer enviar SMSs. Si las secciones no están comunicadas entre sí, para evitar implementar varias veces lo mismo, se puede crear un servicio común de envío de SMSs y que las distintas secciones hagan llamadas RPC al mismo servicio.
+- En el momento de dar de alta un usuario en la web de una empresa, se pueden querer desencadenar varias acciones; por ejemplo, enviar un correo de bienvenida y crear el nuevo usuario en la base de datos. La web podria _publicar_ en "dar de alta", y los servicios de envío de correo y de base de datos _suscribirse_ a "dar de alta", para reaccionar al mensaje.
+
+
+
+* Cómo funciona Nexus? paths
+
+Nexus organiza todos sus componentes en forma de árbol. Los nombres hasta una nodo unidos por "." se llaman el _path_ del nodo. En nexus todo se identifica con su _path_, incluidos los usuarios, que no són más que otro nodo del árbol.
+
+    nexus
+    ├─ demo
+    │  ├─ hello  // path: nexus.demo.hello
+    │  └─ bye    // path: nexus.demo.bye
+    └─ ...
+
+
+
+* Cómo funciona Nexus? RPC
+
+El RPC se gestiona con _task.pull_ y _task.push_, los cuales se efectuan sobre algún path.
+
+- Un _task.pull_ se hace para recibir tareas dirigidas a un _subpath_ del _path_ donde se hace _pull_. Cuando se recibe la tarea, se resuelve y se responde con un _SendResult_ o un _SendError_, pero nunca ambos.
+: Por ejemplo, haciendo _task.pull_ en "nexus.demo" se reciben tareas dirigidas a "nexus.demo.hello", a "nexus.demo.bye" y a cualquier _path_ que empiece por "nexus.demo". 
+- Un _task.push_ se hace para consumir un servicio, es decir, enviar una tarea a un servicio. Haciendo _task.push_ al path "nexus.demo.hello" se está llamando al método "hello" del servicio "nexus.demo". Nexus asigna el _push_ a cualquier _pull_ que haya en un punto superior del _path_ donde se ha hecho _push_.
+
+Por ejemplo, un servicio de gestión de usuarios que haga _pull_ a "users", con métodos "add", "delete", "update" se podría llamar haciendo _push_ a "users.add", "users.delete" y "users.update".
+
+Junto con el _task.push_ se envía un objeto JSON conteniendo los parámetros necesarios para resolver la petición.
+
+
+
+* Cómo funciona Nexus? pub/sub
+
+El pub/sub se gestiona con _topics_ y _pipes_.
+
+- Una _pipe_ es sólo un canal a través del cual se pueden enviar mensajes. Se pueden crear arbitrariamente, y se les asigna un identificador aleatorio. Con ese identificador se puede escribir en la _pipe_, y quien la ha creado puede leer de ella.
+- Un _topic_ es un _path_ de nexus al que se puede _publicar_ y _suscribirse_. Cualquier usuario con permisos sobre un _topic_ puede suscribir una _pipe_ a ese _topic_ o publicar en él. 
+
+Por ejemplo, en el caso de dar de alta usuarios nuevos, los servicios de mail y base de datos crearían cada uno una _pipe_ y la suscribirían al topic "dar de alta" (por ejemplo, al _path_ "user.create"), y cuando se cree un nuevo usuario la web publicaría al topic "user.create", con lo cual los dos servicios recibirían cada uno el mismo mensaje publicado.
+
+
+
+* Cómo funciona Nexus? Locks y Hooks
+
+Nexus soporta dos conceptos adicionales, como soporte a la estructura de microservicios.
+
+*Locks*
+
+Los _locks_ permiten reservar un recurso que no pueda ser compartido entre varios consumidores. Antes de hacer el _push_, se adquiere el _lock_, y después de recibir la respuesta, éste se libera. Si se intenta adquirir un _lock_ que ya está reservado, se bloquea hasta que éste queda libre.
+
+*Hooks*
+
+Los _hooks_ permiten escuchar en un _path_ sin interferir en el funcionamiento normal. Por ejemplo, escuchando en "nexus.demo" se recibiria el _task.pull_ a "nexus.demo" y el _task.push_ a "nexus.demo.hello", así como la respuesta al _task.push_, todo esto sin que quien ha hecho el _hook_ sea quien tenga que resolver la tarea, ni impidiendo que quién ha enviado la tarea reciba la respuesta. 
+
+
+
+* Seguridad y permisos: tags
+
+Los usuarios se pueden enriquecer con _tags_ asociados a un _path_. Éstos _tags_ són válidos para el _path_ asignado y todos los que empiecen por él. Los _tags_ en general no tienen ningún significado para Nexus, pero hay _tags_ concretos que sí lo tienen y que permiten regular los permisos en Nexus. Concretamente:
+
+- _@admin=true_ permite hacer cualquier acción. Por tanto, _@admin=true_ sobre "." permite hacer cualquier acción sobre cualquier _path_, e identifica al usuario _root_.
+- _@task.push=true_ permite hacer _push_.
+- _@task.pull=true_ permite hacer _pull_.
+
+Los _tags_ no pueden ser manipulados por el usuario que hace _push_, de forma que los servicios se pueden basar en ellos para añadir nuevos tipos de permisos basados en _tags_.
+
+
+
+* Seguridad y permisos: templates
+
+Para facilitar la asignación de tags, se pueden agrupar conjuntos de tags en un usuario (que llamamos _template_, aunque es un usuario normal).
+
+A cualquier usuario se le pueden asignar una lista de _templates_, de forma que el usuario hereda los tags de todos los templates de la lista. 
+
+Si hay conflictos, los nuevos tags sobreescriben a los heredados anteriormente, y los tags asignados directamente al usuario sobreescriben a todos los _tags_ de los _templates_.
+
+
+    
+* Ejemplos
+
+* Nexus básico: sólo JSON
+
+    nc localhost 1717
+    {"jsonrpc":"2.0","id":1,"method":"sys.login","params":{"user":"root","pass":"root"}}
+    {"jsonrpc":"2.0","id":1,"method":"user.list","params":{}}
+
+* Servicio Nexus: Go
+
+.code service/main.go
 
 : Servei basic en service
 : go run main.go        // desde dos terminals diferents
 : nxctl push demo.hello // i vore com s'executa en dos llocs diferents
 : nxctl push demo.int   // i vore com ix method not found
 
-: Sala de xat to cutre
-: nxctl pipe read                      // desde dos llocs diferents
-: nxctl topic sub {pipe_id} demo.chat  // desde dos llocs diferents
-: nxctl topic pub demo.chat {missatge} // desde dos llocs diferents
+* Cliente Nexus: Go
+
+.code go/client.go
+
+* Cliente Nexus: Python
+
+.code python/client.py
+
+* Cliente Nexus: Node
+
+.code node/client.js
+
+* Cliente Nexus: Java
+
+.code java/client.java
+
+* Chat Nexus: JavaScript en navegador
+
+.code js/index.html
+
+* Chat Nexus: Javascript en navegador
+
+.code js/client.js
