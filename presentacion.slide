@@ -145,7 +145,7 @@ Si hay conflictos, los nuevos tags sobreescriben a los heredados anteriormente, 
 
 * Cliente Nexus: Java
 
-.code java/client.java
+.code java/Client.java
 
 * Chat Nexus: JavaScript en navegador
 

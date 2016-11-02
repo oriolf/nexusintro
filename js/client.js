@@ -7,9 +7,10 @@ nexus.dial('ws://localhost:443', function(nc, err) {
             evt.preventDefault();
             nc.topicPublish("demo.chat", 
                            {"user": evt.target[0].value, "msg": evt.target[1].value}, null);
+            evt.target[1].value = '';
             return false;
         };
-        nc.pipeCreate({"len": 100}, function(pipe, e){
+        nc.pipeCreate({"len": 100}, function(pipe, err){
             var ReadPipe = function() {
                 pipe.read(1, 60, function(msgs, err) {
                     chat.innerHTML += '<br>' + msgs.msgs[0].msg.msg.user + 
