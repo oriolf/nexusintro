@@ -57,8 +57,8 @@ Nexus organiza todos sus componentes en forma de árbol. Los nombres hasta una n
 
 El RPC se gestiona con _task.pull_ y _task.push_, los cuales se efectuan sobre algún path.
 
-- Un _task.pull_ se hace para recibir tareas dirigidas a un _subpath_ del _path_ donde se hace _pull_. Cuando se recibe la tarea, se resuelve y se responde con un _SendResult_ o un _SendError_, pero nunca ambos.
-: Por ejemplo, haciendo _task.pull_ en "nexus.demo" se reciben tareas dirigidas a "nexus.demo.hello", a "nexus.demo.bye" y a cualquier _path_ que empiece por "nexus.demo". 
+- Un _task.pull_ se hace para recibir tareas dirigidas a un método del _path_ donde se hace _pull_ ("path.metodo"). Cuando se recibe la tarea, se resuelve y se responde con un _SendResult_ o un _SendError_, pero nunca ambos.
+: Por ejemplo, haciendo _task.pull_ en "nexus.demo" se reciben tareas dirigidas a "nexus.demo.hello", a "nexus.demo.bye" y a cualquier _path_ que empiece por "nexus.demo", con un nivel (el método). 
 - Un _task.push_ se hace para consumir un servicio, es decir, enviar una tarea a un servicio. Haciendo _task.push_ al path "nexus.demo.hello" se está llamando al método "hello" del servicio "nexus.demo". Nexus asigna el _push_ a cualquier _pull_ que haya en un punto superior del _path_ donde se ha hecho _push_.
 
 Por ejemplo, un servicio de gestión de usuarios que haga _pull_ a "users", con métodos "add", "delete", "update" se podría llamar haciendo _push_ a "users.add", "users.delete" y "users.update".
