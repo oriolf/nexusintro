@@ -1,5 +1,5 @@
 Nexus
-Introducción
+Mensajería M2M
 11 Nov 2016
 
 Oriol Flors
@@ -26,7 +26,7 @@ Estas dos características lo hacen agnóstico a la plataforma desde la que se u
 
 - Websocket con JavaScript desde el navegador.
 - Conexión TCP con Go desde un servidor.
-- Peticiones HTTP con python desde un servidor.
+- Peticiones HTTP con Python desde un servidor.
 
 Actualmente hay implementaciones que permiten comunicarse con Nexus en Go, Python, Javascript y Java.
 
@@ -88,7 +88,7 @@ Los _locks_ permiten reservar un recurso que no pueda ser compartido entre vario
 
 *Hooks*
 
-Los _hooks_ permiten escuchar en un _path_ sin interferir en el funcionamiento normal. Por ejemplo, escuchando en "nexus.demo" se recibiria el _task.pull_ a "nexus.demo" y el _task.push_ a "nexus.demo.hello", así como la respuesta al _task.push_, todo esto sin que quien ha hecho el _hook_ sea quien tenga que resolver la tarea, ni impidiendo que quién ha enviado la tarea reciba la respuesta. 
+Los _hooks_ permiten escuchar en un _path_ sin interferir en el funcionamiento normal. Por ejemplo, suscribiéndose a "hooks.nexus.demo.*" se recibiria el _task.pull_ a "nexus.demo" y el _task.push_ a "nexus.demo.hello", así como la respuesta al _task.push_, todo esto sin que quien ha hecho el _hook_ sea quien tenga que resolver la tarea, ni impidiendo que quién ha enviado la tarea reciba la respuesta. 
 
 
 
